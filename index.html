@@ -48,10 +48,10 @@
 
   <script>
     // ==========================================
-    // 🔑 ВСТАВЬТЕ ВАШ API КЛЮЧ НИЖЕ 🔑
-    // Пример: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    // 🔑 ВСТАВЬТЕ ВАШ РЕАЛЬНЫЙ API КЛЮЧ НИЖЕ 🔑
+    // Получить ключ: https://platform.deepseek.com/api_keys
     // ==========================================
-    const DEEPSEEK_API_KEY = 'ВСТАВЬТЕ_СЮДА_ВАШ_API_КЛЮЧ'; 
+    const DEEPSEEK_API_KEY = 'sk-6db8f22f2c764334ade67835827d2b7d'; // <-- ЗАМЕНИТЕ ЭТО!
     // ==========================================
 
     const fragmentsInput = document.getElementById('fragments');
@@ -67,9 +67,14 @@
 
     generateBtn.addEventListener('click', async () => {
       const text = fragmentsInput.value.trim();
-      if (!text) { showStatus('Введите хотя бы один фрагмент текста.', 'error'); return; }
-      if (DEEPSEEK_API_KEY === 'sk-b81885a26cbb4db794635b1f9462c3e8') {
-        showStatus('⚠️ Откройте файл в текстовом редакторе и вставьте ключ в строку const DEEPSEEK_API_KEY.', 'error');
+      if (!text) { 
+        showStatus('Введите хотя бы один фрагмент текста.', 'error'); 
+        return; 
+      }
+      
+      // ПРОВЕРКА: не остался ли ключ шаблонным
+      if (DEEPSEEK_API_KEY === 'ВАШ_РЕАЛЬНЫЙ_API_КЛЮЧ' || !DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === '') {
+        showStatus('⚠️ Вставьте ваш реальный API-ключ DeepSeek в переменную DEEPSEEK_API_KEY (строка 61)', 'error');
         return;
       }
 
@@ -122,14 +127,18 @@
 
     function setLoading(isLoading) {
       generateBtn.disabled = isLoading;
-      statusEl.textContent = isLoading ? '⏳ Генерация...' : statusEl.textContent;
-      if (isLoading) statusEl.className = 'status loading';
+      if (isLoading) {
+        statusEl.textContent = '⏳ Генерация...';
+        statusEl.className = 'status loading';
+      }
     }
 
     function showStatus(msg, type) {
       statusEl.textContent = msg;
       statusEl.className = `status ${type}`;
-      if (type === 'error') setTimeout(() => statusEl.className = 'status', 5000);
+      if (type === 'error') setTimeout(() => {
+        if (statusEl.className === 'status error') statusEl.className = 'status';
+      }, 5000);
     }
   </script>
 </body>
