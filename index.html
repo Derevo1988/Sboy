@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Генератор статей</title>
+  <style>
+    :root { --primary: #4f46e5; --primary-hover: #4338ca; --bg: #f5f7fa; --card: #ffffff; --text: #1f2937; --border: #d1d5db; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 2rem 1rem; display: flex; justify-content: center; }
+    .container { background: var(--card); width: 100%; max-width: 800px; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    h1 { margin: 0 0 0.5rem; font-size: 1.8rem; }
+    .subtitle { color: #6b7280; margin: 0 0 1.5rem; }
+    label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
+    textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; resize: vertical; box-sizing: border-box; transition: border 0.2s; }
+    textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+    .btn { background: var(--primary); color: #fff; border: none; padding: 0.8rem 1.5rem; border-radius: 10px; font-size: 1rem; cursor: pointer; margin-top: 1rem; transition: background 0.2s; }
+    .btn:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-copy { background: #10b981; margin-top: 0.5rem; }
+    .btn-copy:hover { background: #059669; }
+    .char-count { font-size: 0.85rem; color: #6b7280; text-align: right; margin-top: 0.25rem; }
+    .status { margin-top: 1rem; font-weight: 500; display: none; }
+    .status.loading { color: var(--primary); display: block; }
+    .status.error { color: #ef4444; display: block; }
+    .result-wrap { margin-top: 1.5rem; position: relative; }
+    #result { background: #f9fafb; }
+    #copyBtn { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI-Генератор статей</h1>
+    <p class="subtitle">Отправьте фрагменты текста — получите готовый материал для СМИ</p>
+
+    <label for="fragments">📝 Фрагменты текста</label>
+    <textarea id="fragments" placeholder="Вставьте ваши заметки, тезисы или черновики сюда..."></textarea>
+    <div class="char-count" id="charCount">0 символов</div>
+
+    <button id="generateBtn" class="btn">Сгенерировать статью</button>
+    <div id="status" class="status"></div>
+
+    <div class="result-wrap">
+      <label for="result">📄 Результат</label>
+      <textarea id="result" readonly placeholder="Здесь появится готовая статья..."></textarea>
+      <button id="copyBtn" class="btn btn-copy">📋 Копировать</button>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 🔑 ВСТАВЬТЕ ВАШ API КЛЮЧ НИЖЕ 🔑
+    // Пример: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    // ==========================================
+    const DEEPSEEK_API_KEY = 'ВСТАВЬТЕ_СЮДА_ВАШ_API_КЛЮЧ'; 
+    // ==========================================
+
+    const fragmentsInput = document.getElementById('fragments');
+    const charCount = document.getElementById('charCount');
+    const generateBtn = document.getElementById('generateBtn');
+    const resultArea = document.getElementById('result');
+    const copyBtn = document.getElementById('copyBtn');
+    const statusEl = document.getElementById('status');
+
+    fragmentsInput.addEventListener('input', () => {
+      charCount.textContent = `${fragmentsInput.value.length} символов`;
+    });
+
+    generateBtn.addEventListener('click', async () => {
+      const text = fragmentsInput.value.trim();
+      if (!text) { showStatus('Введите хотя бы один фрагмент текста.', 'error'); return; }
+      if (DEEPSEEK_API_KEY === 'sk-b81885a26cbb4db794635b1f9462c3e8') {
+        showStatus('⚠️ Откройте файл в текстовом редакторе и вставьте ключ в строку const DEEPSEEK_API_KEY.', 'error');
+        return;
+      }
+
+      setLoading(true);
+      resultArea.value = '';
+      copyBtn.style.display = 'none';
+
+      try {
+        const res = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: 'Ты — профессиональный журналист и редактор. Преврати предоставленные фрагменты в связную, качественную статью для СМИ. Сохрани факты, улучши стиль, добавь заголовок и структуру. Отвечай только текстом статьи.' },
+              { role: 'user', content: text }
+            ],
+            temperature: 0.7
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || `Ошибка API (код ${res.status})`);
+        }
+
+        const data = await res.json();
+        const article = data.choices?.[0]?.message?.content;
+        if (!article) throw new Error('Получен пустой ответ от модели');
+
+        resultArea.value = article;
+        copyBtn.style.display = 'inline-block';
+        showStatus('✅ Статья успешно сгенерирована!', 'loading');
+      } catch (err) {
+        showStatus(`❌ ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(resultArea.value).then(() => {
+        copyBtn.textContent = '✅ Скопировано!';
+        setTimeout(() => copyBtn.textContent = '📋 Копировать', 2000);
+      });
+    });
+
+    function setLoading(isLoading) {
+      generateBtn.disabled = isLoading;
+      statusEl.textContent = isLoading ? '⏳ Генерация...' : statusEl.textContent;
+      if (isLoading) statusEl.className = 'status loading';
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = `status ${type}`;
+      if (type === 'error') setTimeout(() => statusEl.className = 'status', 5000);
+    }
+  </script>
+</body>
+</html>
